@@ -13,7 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.epsilonplayer.presentation.music_screen.MusicScreen
-import com.example.epsilonplayer.presentation.permission.checkAndRequestPermissions
+import com.example.epsilonplayer.presentation.permission.CheckAndRequestPermissions
 import com.example.epsilonplayer.ui.theme.EpsilonPlayerTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -32,26 +32,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             EpsilonPlayerTheme {
-                checkAndRequestPermissions(permissions = listOfPermission){
-                    MusicScreen()
+                CheckAndRequestPermissions(permissions = listOfPermission){
+                    SetupNavigation()
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    EpsilonPlayerTheme {
-        Greeting("Android")
     }
 }

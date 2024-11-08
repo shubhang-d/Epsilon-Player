@@ -19,6 +19,23 @@ class PlayerViewModel @Inject constructor(
                 updateState { copy(musicList = musics) }
             }
         }
+        viewModelScope.launch {
+            environment.getCurrentPlayedMusic().collect { music ->
+                updateState { copy(currentPlayedMusic = music) }
+            }
+        }
+
+        viewModelScope.launch {
+            environment.isPlaying().collect { isPlaying ->
+                updateState { copy(isPlaying = isPlaying) }
+            }
+        }
+        viewModelScope.launch {
+            environment.isBottomMusicPlayerShowed().collect { isShowed ->
+                updateState { copy(isBottomPlayerShow = isShowed) }
+
+            }
+        }
     }
 
     fun onEvent(event: PlayerEvent){
@@ -29,13 +46,20 @@ class PlayerViewModel @Inject constructor(
                 }
             }
             is PlayerEvent.PlayPause -> {
-
+                viewModelScope.launch {
+                    if(event.isPlaying) environment.pause()
+                    else environment.resume()
+                }
             }
             is PlayerEvent.SetShowBottomPlayer -> {
-
+                viewModelScope.launch {
+                    environment.setShowBottomMusicPlayer(event.isShowed)
+                }
             }
             is PlayerEvent.RefreshMusicList -> {
-
+                viewModelScope.launch {
+                    environment.refreshMusicList()
+                }
             }
         }
     }

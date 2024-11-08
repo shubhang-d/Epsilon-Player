@@ -6,6 +6,7 @@ import android.os.Looper
 import androidx.core.net.toUri
 import com.example.epsilonplayer.data.roomdb.MusicEntity
 import com.example.epsilonplayer.data.roomdb.MusicRepository
+import com.example.epsilonplayer.data.utils.MusicUtil
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
@@ -42,6 +43,9 @@ class PlayerEnvironment @Inject constructor(
     private val _hasStopped = MutableStateFlow(false)
     private val hasStopped: StateFlow<Boolean> = _hasStopped
 
+    private val _isBottomMusicPlayerShowed = MutableStateFlow(false)
+    private val isBottomMusicPlayerShowed: StateFlow<Boolean> = _isBottomMusicPlayerShowed
+
     private val playerHandler: Handler = Handler(Looper.getMainLooper())
 
     private val exoPlayer = ExoPlayer.Builder(context).build().apply {
@@ -59,6 +63,10 @@ class PlayerEnvironment @Inject constructor(
                                 currentIndex == allMusics.value.lastIndex -> allMusics.value[0]
                                 currentIndex != -1 -> allMusics.value[currentIndex + 1]
                                 else -> allMusics.value[0]
+                            }
+
+                            CoroutineScope(dispatcher).launch {
+                                play(nextSong)
                             }
                         }
                         PlaybackMode.REPEAT_OFF -> {
@@ -90,6 +98,18 @@ class PlayerEnvironment @Inject constructor(
         return allMusics
     }
 
+    fun getCurrentPlayedMusic(): Flow<MusicEntity>{
+        return currentPlayedMusic
+    }
+
+    fun isPlaying(): Flow<Boolean>{
+        return isPlaying
+    }
+
+    fun isBottomMusicPlayerShowed(): Flow<Boolean>{
+        return isBottomMusicPlayerShowed
+    }
+
     suspend fun play(music:MusicEntity){
         if(music.audioId != MusicEntity.default.audioId){
             _hasStopped.emit(false)
@@ -101,6 +121,51 @@ class PlayerEnvironment @Inject constructor(
                 exoPlayer.play()
             }
         }
+    }
+
+    suspend fun pause(){
+        playerHandler.post {
+            exoPlayer.pause()
+        }
+    }
+
+    suspend fun resume(){
+        if(hasStopped.value && currentPlayedMusic.value != MusicEntity.default){
+            play(currentPlayedMusic.value)
+        }else{
+            playerHandler.post {
+                exoPlayer.play()
+            }
+        }
+    }
+
+    suspend fun setShowBottomMusicPlayer(isShowed: Boolean){
+        _isBottomMusicPlayerShowed.emit(isShowed)
+    }
+
+    suspend fun refreshMusicList(){
+        val scannedMusic = MusicUtil.fetchMusicFromDevice(context = context)
+        insertAllMusics(scannedMusic)
+    }
+
+    private suspend fun insertAllMusics(newMusicList: List<MusicEntity>){
+        val musicToInsert = arrayListOf<MusicEntity>()
+        val musicToDelete = arrayListOf<MusicEntity>()
+
+        val storedMusicIDs = allMusics.value.map { it.audioId }
+        val newMusicIDs = newMusicList.map { it.audioId }
+
+        newMusicList.forEach {
+            if(it.audioId !in storedMusicIDs) musicToInsert.add(it)
+        }
+
+        allMusics.value.forEach {
+            if(it.audioId !in newMusicIDs) musicToDelete.add(it)
+        }
+
+
+        musicRepository.insertMusics(*musicToInsert.toTypedArray())
+        musicRepository.deleteMusics(*musicToDelete.toTypedArray())
     }
 }
 
